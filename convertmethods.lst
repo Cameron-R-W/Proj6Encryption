@@ -1,0 +1,820 @@
+Microsoft (R) Macro Assembler Version 6.11		    12/07/19 00:50:58
+convertmethods.asm					     Page 1 - 1
+
+
+				;******************************************************************************************
+				;Program Name: convertMethods.asm
+				;Programmer:   Cameron Weaver
+				;Class:        CSCI 2160-001
+				;Date:         December 07, 2019 at 12:00 PM
+				;Purpose:	   Class that will contains methods for hex to char, char to hex, and encryption
+				;	
+				;******************************************************************************************
+
+
+					.486
+					.model flat
+					.stack 100h
+					
+					
+					
+					ExitProcess 		PROTO Near32 stdcall, dwExitCode:dword
+					ascint32			PROTO Near32 stdcall, lpStringToConvert:dword 
+					intasc32			PROTO Near32 stdcall, lpStringToHold:dword, dval:dword
+					getstring			PROTO Near32 stdcall, lpStringToGet:dword, dlength:dword
+					putstring 			PROTO Near32 stdcall, lpStringToPrint:dword
+					hexToCharacter  	PROTO Near32 stdcall, lpDestination:dword, lpSource:dword, numBytes:dword
+					charTo4HexDigits	PROTO Near32 stdCall, lpSourceString:dword
+					heapAllocHarrison	PROTO Near32 stdcall, dSize:dword
+					encrypt32Bit		PROTO Near32 stdCall, lpSourceString:dword, dMask:dword, numBytes:dword
+					String_Length 		PROTO Near32 stdcall, lpString: dword
+
+ 00000000				.data
+					
+					
+ 00000000				.code
+					
+				COMMENT %
+				;*****************************************************************************************
+				;* Name:  charTo4HexDigits																 *
+				;* Purpose:	Accepts a string returns dword mask  										 *
+				;*																						 *
+				;* Date created: November 17, 2019														 *	 
+				;* Date last modified: November 29, 2018												 *	 				 
+				;*																						 *
+				;* Notes:	None																		 *
+				;*																						 *
+				;*	@param lpSourceString:dword														 	 *
+				;*	@return dword														 				 *			
+				;*****************************************************************************************%	
+ 00000000			charTo4HexDigits proc stdCall uses ebx edx esi, lpSourceString:dword
+					local firstByte:dword, secondByte:dword
+ 00000009  8B 5D 08			mov ebx, lpSourceString					;ebx -> lpSourceString
+ 0000000C  BE 00000000			mov esi, 0								;esi used to increment through lpSourceString				
+ 00000011  B8 00000000			mov eax, 0								;eax used to store bytes and make comparisons
+ 00000016  BA 00000000			mov edx, 0								;edx will store the mask
+					;Check first two bytes
+ 0000001B  8A 04 1E			mov al, [ebx + esi]						;grab first byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare first byte between A - F
+ 00000028  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare first byte between a - f
+ 00000034  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare first byte between 0 - 9
+ 00000040  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 00000042  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 00000043  89 45 FC			mov firstByte, eax						;store first byte to later multiply 
+ 00000046  8A 04 1E			mov al, [ebx + esi]						;grab first byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare first byte between A - F
+ 00000053  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare first byte between a - f
+ 0000005F  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare first byte between 0 - 9
+ 0000006B  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 0000006D  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 0000006E  89 45 F8			mov secondByte, eax						;store second byte to later add
+					;Multiply and add 1st & 2nd byte
+ 00000071  8B 45 FC			mov eax, firstByte						;store first byte to multiply by 16
+ 00000074  6B C0 10			imul eax, 16							;multiply first byte to return decimal value
+ 00000077  03 45 F8			add eax, secondByte						;add secondByte to return decimal value of firstByte + secondByte
+ 0000007A  8A D0			mov dl, al 								;store byte in edx to rotate
+ 0000007C  C1 E2 08			shl edx, 8								;shift result left to store result 
+					;Check bytes 3 - 4
+ 0000007F  B8 00000000			mov eax, 0								;eax used to store bytes and make comparisons
+ 00000084  8A 04 1E			mov al, [ebx + esi]						;grab third byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare third byte between A - F
+ 00000091  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare third byte between a - f
+ 0000009D  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare third byte between 0 - 9
+ 000000A9  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 000000AB  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 000000AC  89 45 FC			mov firstByte, eax						;store third byte to later multiply 
+ 000000AF  8A 04 1E			mov al, [ebx + esi]						;grab first byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare fourth byte between A - F
+ 000000BC  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare fourth byte between a - f
+ 000000C8  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare fourth byte between 0 - 9
+ 000000D4  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 000000D6  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 000000D7  89 45 F8			mov secondByte, eax						;store fourth byte to later add
+					;Multiply and add 3rd & 4th byte
+ 000000DA  8B 45 FC			mov eax, firstByte						;store  3rd byte to multiply by 16
+ 000000DD  6B C0 10			imul eax, 16							;multiply 3rd byte to return decimal value
+ 000000E0  03 45 F8			add eax, secondByte						;add secondByte to return decimal value of firstByte + secondByte
+ 000000E3  8A D0			mov dl, al 								;store byte in edx to rotate
+ 000000E5  C1 E2 08			shl edx, 8								;shift result left to store result 
+					;Check bytes 5 - 6
+ 000000E8  B8 00000000			mov eax, 0								;eax used to store bytes and make comparisons
+ 000000ED  8A 04 1E			mov al, [ebx + esi]						;grab 5th byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare 5th byte between A - F
+ 000000FA  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare fifth byte between a - f
+ 00000106  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare fifth byte between 0 - 9
+ 00000112  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 00000114  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 00000115  89 45 FC			mov firstByte, eax						;store fifth byte to later multiply 
+ 00000118  8A 04 1E			mov al, [ebx + esi]						;grab 6th byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare 6th byte between A - F
+ 00000125  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare 6th byte between a - f
+ 00000131  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare 6th byte between 0 - 9
+ 0000013D  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 0000013F  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 00000140  89 45 F8			mov secondByte, eax						;store 6th byte to later add
+					;Multiply and add 5th & 6th byte
+ 00000143  8B 45 FC			mov eax, firstByte						;store 5th byte to multiply by 16
+ 00000146  6B C0 10			imul eax, 16							;multiply 5th byte to return decimal value
+ 00000149  03 45 F8			add eax, secondByte						;add secondByte to return decimal value of firstByte + secondByte
+ 0000014C  8A D0			mov dl, al 								;store byte in edx to rotate
+ 0000014E  C1 E2 08			shl edx, 8								;shift result left to store result 
+					;Check bytes 7 - 8
+ 00000151  B8 00000000			mov eax, 0								;eax used to store bytes and make comparisons
+ 00000156  8A 04 1E			mov al, [ebx + esi]						;grab 7th byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare 7th byte between A - F
+ 00000163  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare 7th byte between a - f
+ 0000016F  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare 7th byte between 0 - 9
+ 0000017B  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 0000017D  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 0000017E  89 45 FC			mov firstByte, eax						;store 7th byte to later multiply 
+ 00000181  8A 04 1E			mov al, [ebx + esi]						;grab 8th byte from lpSourceString for comparison
+					.if eax  > 40h && eax < 47h 			;compare 8th byte between A - F
+ 0000018E  2C 37				sub al, 55							;subtract 55 decimal value to return a-f decimal 
+					.endif									;finish checking for A - F
+					.if eax > 60h && eax < 67h				;compare 8th byte between a - f
+ 0000019A  2C 57				sub al, 87							;subtract 75 decimal value to return a-f decimal
+					.endif									;finish checking for a - f
+					.if eax < 40h && eax > 29h				;compare 8th byte between 0 - 9
+ 000001A6  2C 30				sub al, 48							;subtract 48 decimal value to return 0-9 decimal
+					.endif									;finish checking for 0 - 9
+ 000001A8  46				inc esi									;increment esi to point to next byte in lpSourceString
+ 000001A9  89 45 F8			mov secondByte, eax						;store 8th byte to later add
+					;Multiply and add 6th & 8th byte
+ 000001AC  8B 45 FC			mov eax, firstByte						;store 7th byte to multiply by 16
+ 000001AF  6B C0 10			imul eax, 16							;multiply first byte to return decimal value
+ 000001B2  03 45 F8			add eax, secondByte						;add secondByte to return decimal value of firstByte + secondByte
+ 000001B5  8A D0			mov dl, al 								;store byte in edx to rotate
+ 000001B7  8B C2			mov eax, edx							;return dword mask (eax)
+					RET										;return to driver
+ 000001C0			charTo4HexDigits endp	
+					;*************************************************************************************
+				;* Name:  encrypt32Bit																 	 *
+				;* Purpose:	Encrypt a null-terminated string of characters using a 32-bit mask key 		 *
+				;*																						 *
+				;* Date created: November 17, 2019														 *	 
+				;* Date last modified: November 29, 2018												 *	 				 
+				;*																						 *
+				;* Notes:	rmdr will contain remaining number of bytes left in lpSource (1 - 3) bytes	 *
+				;*																						 *
+				;*	@param lpSourceString:dword, dMask:dword, numBytes:dword							 *
+				;*	@return dword														 				 *			
+				;*****************************************************************************************%	
+ 000001C0			encrypt32Bit proc stdCall uses ebx ecx edx esi, lpSourceString:dword, dMask:dword, numBytes:dword
+					local rmdr:dword
+ 000001CA  8B 45 10			mov eax, numBytes				;eax used to create amount of bytes in heap
+ 000001CD  40				inc eax 						;inc eax to add null value
+ 000001CE  8B D8			mov ebx, eax					;store numBytes needed in ebx to use with invoke
+					INVOKE heapAllocHarrison, ebx	;Create heap to store encrypted string
+ 000001D6  8B 5D 08			mov ebx, lpSourceString			;ebx -> lpSourceString
+ 000001D9  8B 55 10			mov edx, numBytes				;edx used to subtract 4 from numBytes
+ 000001DC  B9 00000000			mov ecx, 0						;ecx tracks x times we can take 4 bytes from lpSource
+ 000001E1  BE 00000000			mov esi, 0						;esi used to increment through lpSourceString
+ 000001E6			subNumBytes:						;keep subtracting 4 from numBytes till numBytes < 4
+ 000001E6  83 EA 04			sub edx, 4						;sub 4 from numBytes(edx) till numBytes < 4
+ 000001E9  41				inc ecx							;increment ecx to track x amount can subtract numBytes by 4
+ 000001EA  83 FA 04			cmp edx, 4						;if numBytes(edx) is less than 4 set the remainder
+ 000001ED  7C 02			jl setRemainder					;jump to set the remainder of bytes remaining in numBytes(edx)
+ 000001EF  EB F5			jmp subNumBytes					;repeat till numBytes(edx) < 4
+ 000001F1			setRemainder:						;set rmdr the remaining of bytes left in numBytes(edx)
+ 000001F1  89 55 FC			mov rmdr, edx					;rmdr, amount of bytes remaining after dividing by 4
+ 000001F4  BA 00000000			mov edx, 0						;edx used to xor with dMask
+ 000001F9			loopSource:							;loop through source string amount divisible by 4(ecx)
+ 000001F9  8A 14 1E			mov dl, [ebx + esi]				;grab 1st byte of 4 from lpSourceString
+ 000001FC  C1 E2 08			shl edx, 8 						;shift left to make room for the 3 other bytes
+ 000001FF  46				inc esi							;inc esi to point to 2nd byte
+ 00000200  8A 14 1E			mov dl, [ebx + esi]				;grab 2nd byte of 4 from lpSourceString
+ 00000203  C1 E2 08			shl edx, 8 						;shift left to make room for the 2 other bytes
+ 00000206  46				inc esi							;inc esi to point to 3rd byte
+ 00000207  8A 14 1E			mov dl, [ebx + esi]				;grab 3rd byte of 4 from lpSourceString
+ 0000020A  C1 E2 08			shl edx, 8 						;shift left to make room for the 1 other bytes
+ 0000020D  46				inc esi							;inc esi to point to 4th byte
+ 0000020E  8A 14 1E			mov dl, [ebx + esi]				;grab 4th byte of 4 from lpSourceString
+ 00000211  33 55 0C			xor edx, dMask					;xor to encrypt the 4 bytes
+ 00000214  83 EE 03			sub esi, 3						;sub 3 from esi to store into heap(eax)
+ 00000217  C1 C2 08			rol edx, 8						;rotate highest order byte to lowest to move into heap 
+ 0000021A  88 14 06			mov [eax + esi], dl 			;move lowest order into heap
+ 0000021D  46				inc esi							;increase esi to point to next byte in the heap
+ 0000021E  C1 C2 08			rol edx, 8						;rotate highest order byte to lowest to move into heap 
+ 00000221  88 14 06			mov [eax + esi], dl 			;move lowest order into heap
+ 00000224  46				inc esi							;increase esi to point to next byte in the heap
+ 00000225  C1 C2 08			rol edx, 8						;rotate highest order byte to lowest to move into heap 
+ 00000228  88 14 06			mov [eax + esi], dl 			;move lowest order into heap
+ 0000022B  46				inc esi							;increase esi to point to next byte in the heap
+ 0000022C  C1 C2 08			rol edx, 8						;rotate highest order byte to lowest to move into heap 
+ 0000022F  88 14 06			mov [eax + esi], dl 			;move lowest order into heap
+ 00000232  46				inc esi							;increase esi to point to next byte in the heap
+ 00000233  E2 C4		loop loopSource						;repeat loop until 4x bytes have been xor'd
+ 00000235  8B 4D FC			mov ecx, rmdr 					;store remaining number of bytes in ecx for comparison
+ 00000238  BA 00000000			mov edx, 0						;reset edx to 0 for reuse
+					.if ecx == 1					;if number of bytes remaining = 1 mask only 1 byte
+ 00000242  8A 14 1E				mov dl, [ebx + esi]			;grab last remaining byte from lpSource
+ 00000245  8B 4D 0C				mov ecx, dMask				;set ecx to dMask to grab highest order byte to mask
+ 00000248  C1 C1 08				rol ecx, 8					;rotate highest order 
+ 0000024B  32 D1				xor dl, cl					;encrypt byte with lowest order
+ 0000024D  88 14 06				mov [eax + esi], dl			;store encrypted byte in heap
+ 00000250  46					inc esi						;increase esi to point to next byte
+ 00000251  C6 04 06 00				mov byte ptr [eax + esi], 0	;store null value
+					.endif							;check if num bytes remaining = 2
+					.if ecx == 2					;if number of bytes remaining = 2 mask only 2 bytes
+ 0000025A  8A 14 1E				mov dl, [ebx + esi]			;grab 1st byte of last 2 bytes from lpSource
+ 0000025D  C1 E2 08				shl edx, 8					;shift left to store 2nd byte in dl
+ 00000260  46					inc esi						;increment esi to point to next byte
+ 00000261  8A 14 1E				mov dl, [ebx + esi]			;grab 2nd byte of last 2 bytes from lpSource
+ 00000264  8B 4D 0C				mov ecx, dMask				;set ecx to dMask to grab highest order byte to mask
+ 00000267  C1 C1 10				rol ecx, 16					;rotate 2 bytes from the left, mask = cx
+ 0000026A  66| 33 D1				xor dx, cx 					;encrypt byte with two lowest order cx
+ 0000026D  C1 C2 18				rol edx, 24					;rotate so lowest order is first byte to move into heap
+ 00000270  4E					dec esi						;decrement esi to point to correct place in heap
+ 00000271  88 14 06				mov [eax + esi], dl			;place lowest order encrypted byte (dl) into heap
+ 00000274  46					inc esi						;increment esi to point to next byte
+ 00000275  C1 C2 08				rol edx, 8					;rotate edx, lowest order is next encrypted byte to store to heap
+ 00000278  88 14 06				mov [eax + esi], dl			;place lowest order encrypted byte (dl) into heap
+ 0000027B  46					inc esi						;increase esi to point to next byte
+ 0000027C  C6 04 06 00				mov byte ptr [eax + esi], 0	;store null value
+					.endif							;check if num bytes remaining = 3
+					.if ecx == 3					;if number of bytes remaining = 3 mask only 3 bytes
+ 00000285  8A 14 1E				mov dl, [ebx + esi]			;grab 1st byte of last 3 bytes from lpSource
+ 00000288  C1 E2 08				shl edx, 8					;shift left to store 2nd byte in dl
+ 0000028B  46					inc esi						;increment esi to point to next byte
+ 0000028C  8A 14 1E				mov dl, [ebx + esi]			;grab 2nd byte of last 3 bytes from lpSource
+ 0000028F  C1 E2 08				shl edx, 8					;shift left to store 3rd byte in dl
+ 00000292  46					inc esi						;increment esi to point to next byte
+ 00000293  8A 14 1E				mov dl, [ebx + esi]			;grab 3rd byte of last 3 bytes from lpSource
+ 00000296  8B 4D 0C				mov ecx, dMask				;set ecx to dMask to mask last 3 bytes
+ 00000299  C1 C1 18				rol ecx, 24					;rotate mask 3 bytes to correlate with edx
+ 0000029C  C1 E1 08				shl ecx, 8					;get rid of highest order byte
+ 0000029F  C1 E9 08				shr ecx, 8					;set highest order byte to 0
+ 000002A2  33 D1				xor edx, ecx				;mask the last 3 bytes of lpSource
+ 000002A4  83 EE 02				sub esi, 2					;subtract esi by 2 to point to correct position of lpSource
+ 000002A7  C1 C2 10				rol edx, 16					;rotate edx so first byte is in lowest order(dl)
+ 000002AA  88 14 06				mov [eax + esi], dl 		;place lowest order encrypted byte 1 (dl) into heap
+ 000002AD  46					inc esi						;increment esi to point to next byte
+ 000002AE  C1 C2 08				rol edx, 8					;rotate edx so second byte is in lowest order (dl)
+ 000002B1  88 14 06				mov [eax + esi], dl			;place lowest order encrypted byte 2 (dl) into heap 
+ 000002B4  46					inc esi						;increment esi to point to next byte
+ 000002B5  C1 C2 08				rol edx, 8					;rotate edx so third byte is in lowest order (dl)
+ 000002B8  88 14 06				mov [eax + esi], dl			;place lowest order encrypted byte 3 (dl) into heap
+ 000002BB  46					inc esi						;increase esi to point to next byte
+ 000002BC  C6 04 06 00				mov byte ptr [eax + esi], 0	;store null value	
+					.endif							;check if num bytes remaining = 0
+					.if ecx == 0					;if number of bytes remaining = 0 set null value
+ 000002C4  C6 04 06 00				mov byte ptr [eax + esi], 0	;set null value of heap
+					.endif							;end if statement
+					RET
+ 000002D0			encrypt32Bit endp
+				COMMENT %
+				;******************************************************************************************
+				;* Name: String_length																	  *												
+				;* Purpose: Accepts a string and returns the number of non-null characters			      *
+				;*																						  *
+				;* Date created: October 15, 2019														  *
+				;* Date last modified: October 15, 2019													  *
+				;*																						  *
+				;* Notes on specifications, special algorithms, and assumptions:						  *
+				;*																						  *
+				;*																						  *
+				;*																						  *
+				;*	@param 	lpString:dword													              *
+				;*	@return	dword																	  	  *
+				;****
+				%
+ 000002D0			String_Length proc stdcall uses edx esi, lpString: dword
+ 000002D5  8B 55 08			mov edx, lpString 				;edx -> lpString
+ 000002D8  BE 00000000			mov esi, 0						;esi will itterate through the string
+ 000002DD			stLoop:								;Loop through string till null term is reached
+ 000002DD  80 3C 16 00			cmp byte ptr [edx + esi], 0		;Checking for null terminator
+ 000002E1  74 03			je finish						;if null found then reached end of string. ESI = LENGTH
+ 000002E3  46				inc esi							;keep incrementing esi till null is reached
+ 000002E4  EB F7			jmp stLoop						;Repeat until null value found
+ 000002E6			finish:								;when finish return eax(length of string)
+ 000002E6  8B C6			mov eax, esi					;eax -> length of string
+					RET								;return to driver
+ 000002EE			String_Length endp					;end of String_Length
+				;*****************************************************************************************
+				;* Name:  hexToCharacter																 *
+				;* Purpose:	Accepts a users string and returns a printable string of its hex values  	 *
+				;*																						 *
+				;* Date created: November 17, 2019														 *	 
+				;* Date last modified: November 29, 2018												 *	 				 
+				;*																						 *
+				;* Notes:	None																		 *
+				;*																						 *
+				;*	@param lpDestination:dword, lpSource:dword, numBytes:dword							 *
+				;*	@return dword														 				*			
+				;*****************************************************************************************%	
+ 000002EE			hexToCharacter proc stdCall uses ebx ecx edx esi, lpDestination:dword, lpSource:dword, numBytes:dword
+					local lpDest:dword, lpSc:dword	
+ 000002F8  8B 4D 10			mov ecx, numBytes						;ecx used to check if numBytes = 0
+					.if ecx == 0							;check if lpSource is a dword
+ 00000303  8B 45 08				mov eax, lpDestination				;eax -> lpDestination
+ 00000306  BE 00000000				mov esi, 0							;esi used to increment through lpDestination
+ 0000030B  BA 00000000				mov edx, 0							;edx used to convert bytes
+ 00000310  8B 5D 0C				mov ebx, lpSource					;ebx -> lpSource
+					;1st byte of lpSource
+ 00000313  C1 C3 08				rol ebx, 8							;place highest order byte in lowest order
+ 00000316  8A D3				mov dl, bl							;place lowest byte in dl to isolate lowest order byte
+ 00000318  C1 CA 04				ror edx, 4							;separate the first bit in dl from the 2nd bit 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 00000320  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 00000323  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 00000326  B2 00					mov dl, 0						;clear lowest order byte
+ 00000328  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 0000032E  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 00000331  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 00000334  B2 00					mov dl, 0						;clear lowest order byte
+ 00000336  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+ 00000337  C1 C2 04				rol edx, 4 							;shift 2nd bit to lowest order 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 0000033F  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 00000342  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 00000345  B2 00					mov dl, 0						;clear lowest order byte
+ 00000347  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 0000034D  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 00000350  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 00000353  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+					;2nd byte of lpSource
+ 00000354  C1 C3 08				rol ebx, 8							;grab next byte from dword lpSource
+ 00000357  8A D3				mov dl, bl 							;place lowest byte in dl to isolate lowest order byte
+ 00000359  C1 CA 04				ror edx, 4							;separate the first bit in dl from the 2nd bit 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 00000361  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 00000364  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 00000367  B2 00					mov dl, 0						;clear lowest order byte
+ 00000369  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 0000036F  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 00000372  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 00000375  B2 00					mov dl, 0						;clear lowest order byte
+ 00000377  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+ 00000378  C1 C2 04				rol edx, 4 							;shift 2nd bit to lowest order 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 00000380  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 00000383  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 00000386  B2 00					mov dl, 0						;clear lowest order byte
+ 00000388  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 0000038E  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 00000391  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 00000394  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+					;3rd byte of lpSource
+ 00000395  C1 C3 08				rol ebx, 8							;grab next byte from dword lpSource
+ 00000398  8A D3				mov dl, bl 							;place lowest byte in dl to isolate lowest order byte
+ 0000039A  C1 CA 04				ror edx, 4							;separate the first bit in dl from the 2nd bit 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 000003A2  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 000003A5  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 000003A8  B2 00					mov dl, 0
+ 000003AA  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 000003B0  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 000003B3  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 000003B6  B2 00					mov dl, 0
+ 000003B8  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+ 000003B9  C1 C2 04				rol edx, 4	 						;shift 2nd bit to lowest order 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 000003C1  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 000003C4  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 000003C7  B2 00					mov dl, 0						;clear lowest order byte
+ 000003C9  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 000003CF  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 000003D2  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 000003D5  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+					;4th byte of lpSource
+ 000003D6  C1 C3 08				rol ebx, 8							;grab next byte from dword lpSource
+ 000003D9  8A D3				mov dl, bl 							;place lowest byte in dl to isolate lowest order byte
+ 000003DB  C1 CA 04				ror edx, 4							;separate the first bit in dl from the 2nd bit 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 000003E3  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 000003E6  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 000003E9  B2 00					mov dl, 0
+ 000003EB  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 000003F1  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 000003F4  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination
+ 000003F7  B2 00					mov dl, 0
+ 000003F9  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+ 000003FA  C1 C2 04				rol edx, 4 							;shift 2nd bit to lowest order 
+						.if dl < 10							;if first bit is less than 10 then can add by 30h
+ 00000402  80 C2 30					add dl, 30h						;add 30h to set decimal value of bit in ASCII
+ 00000405  88 14 06					mov [eax + esi], dl				;store first byte(Hex of first bit) in lpDestination
+ 00000408  B2 00					mov dl, 0						;clear lowest order byte
+ 0000040A  46						inc esi							;increment esi to point to next byte
+						.endif								;byte is not 0 - 9
+						.if dl >= 10						;check if bit is A - F
+ 00000410  80 C2 37					add dl, 37h						;add 31h to bit to return hex value of A - F
+ 00000413  88 14 06					mov [eax + esi], dl				;store hex value of bit in lpDestination	
+ 00000416  46						inc esi							;increment esi to point to next byte
+						.endif								;check 2nd bit of 1st byte
+					.endif									;return to driver
+ 00000417  83 F9 00			cmp ecx, 0								;if numbytes(ecx) = 0
+ 0000041A  0F 84 00000356		je returnDword	 						;exit method return to driver
+ 00000420  BE 00000000			mov esi, 0								;esi used to increment through lpSource
+ 00000425  C7 45 FC			mov lpDest, 0							;lpDest used to increment through lpDestination
+	   00000000
+ 0000042C  8B 4D 10			mov ecx, numBytes						;ecx used to loop the # of bytes
+ 0000042F  8B 5D 0C			mov ebx, lpSource						;ebx -> lpSource
+ 00000432  8B 45 08			mov eax, lpDestination					;eax -> lpDestination
+ 00000435  C7 45 FC			mov lpDest, 0							;lpDest used to increment through lpDestination
+	   00000000
+ 0000043C			nextBytes:									;loop through each byte of lpSource
+ 0000043C  83 F9 00			cmp ecx, 0								;if ecx < 0 gone through each byte finish 
+ 0000043F  0F 8E 00000320		jle finish								;if ecx = 0, finish method return 
+ 00000445  BA 00000000			mov edx, 0								;set edx to 0 to store bytes 
+ 0000044A  8A 14 1E			mov dl, [ebx + esi]						;grab byte from lpSource
+ 0000044D  46				inc esi									;increment esi to point to next byte in lpSource
+ 0000044E  C1 CA 04			ror edx,4								;rotate bit to the right to isolate 1st bit in dl
+					.if dl == 0								;if bit = 0, place 30h into lpDestination
+ 00000455  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000458  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000045B  C6 04 06 30				mov byte ptr [eax + esi], 30h		;store '0' into lpDestination
+ 0000045F  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000462  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000465  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 1								;if bit = 1, place 31h into lpDestination
+ 0000046D  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000470  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000473  C6 04 06 31				mov byte ptr [eax + esi], 31h		;store '1' into lpDestination
+ 00000477  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000047A  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 0000047D  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 2								;if bit = 2, place 32h into lpDestination
+ 00000485  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000488  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000048B  C6 04 06 32				mov byte ptr [eax + esi], 32h		;store '2' into lpDestination
+ 0000048F  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000492  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000495  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 3								;if bit = 3, place 33h into lpDestination
+ 0000049D  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000004A0  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000004A3  C6 04 06 33				mov byte ptr [eax + esi], 33h		;store '3' into lpDestination
+ 000004A7  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000004AA  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000004AD  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 4								;if bit = 4, place 34h into lpDestination
+ 000004B5  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000004B8  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000004BB  C6 04 06 34				mov byte ptr [eax + esi], 34h		;store '4' into lpDestination
+ 000004BF  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000004C2  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000004C5  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 5								;if bit = 5, place 35h into lpDestination
+ 000004CD  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000004D0  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000004D3  C6 04 06 35				mov byte ptr [eax + esi], 35h		;store '5' into lpDestination
+ 000004D7  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000004DA  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000004DD  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 6								;if bit = 6, place 36h into lpDestination
+ 000004E5  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000004E8  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000004EB  C6 04 06 36				mov byte ptr [eax + esi], 36h		;store '6' into lpDestination
+ 000004EF  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000004F2  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000004F5  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 7								;if bit = 7, place 37h into lpDestination
+ 000004FD  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000500  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000503  C6 04 06 37				mov byte ptr [eax + esi], 37h		;store '7' into lpDestination
+ 00000507  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000050A  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 0000050D  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 8								;if bit = 8, place 38h into lpDestination
+ 00000515  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000518  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000051B  C6 04 06 38				mov byte ptr [eax + esi], 38h		;store '8' into lpDestination
+ 0000051F  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000522  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000525  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 9								;if bit = 9, place 34h into lpDestination
+ 0000052D  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000530  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000533  C6 04 06 39				mov byte ptr [eax + esi], 39h		;store '9' into lpDestination
+ 00000537  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000053A  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 0000053D  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 10							;if bit = 10(A), place 41h into lpDestination
+ 00000545  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000548  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000054B  C6 04 06 41				mov byte ptr [eax + esi], 41h		;store 'A' into lpDestination
+ 0000054F  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000552  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000555  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 11							;if bit = 11(B), place 42h into lpDestination
+ 0000055D  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000560  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000563  C6 04 06 42				mov byte ptr [eax + esi], 42h		;store 'B' into lpDestination
+ 00000567  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000056A  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 0000056D  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 12							;if bit = 12(C), place 43h into lpDestination
+ 00000575  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000578  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000057B  C6 04 06 43				mov byte ptr [eax + esi], 43h		;store 'C' into lpDestination
+ 0000057F  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000582  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000585  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 13							;if bit = 13(D), place 44h into lpDestination
+ 0000058D  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000590  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000593  C6 04 06 44				mov byte ptr [eax + esi], 44h		;store 'D' into lpDestination
+ 00000597  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000059A  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 0000059D  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 14							;if bit = 14(E), place 45h into lpDestination
+ 000005A5  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000005A8  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000005AB  C6 04 06 45				mov byte ptr [eax + esi], 45h		;store 'E' into lpDestination
+ 000005AF  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000005B2  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000005B5  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 15							;if bit = 15(B), place 46h into lpDestination
+ 000005BD  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000005C0  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000005C3  C6 04 06 46				mov byte ptr [eax + esi], 46h		;store 'F' into lpDestination
+ 000005C7  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000005CA  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000005CD  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+ 000005D0  C1 C2 04			rol edx, 4								;place 2nd bit back with 1st bit in lowest order
+ 000005D3  C1 E2 18			shl edx, 24								;swap lowest order with highest order to delete 1st bit
+ 000005D6  C1 E2 04			shl edx, 4								;delete 1st bit in highest order
+ 000005D9  C1 C2 04			rol edx, 4								;place 2nd bit back(isolated) back in lowested order(dl)
+						.if dl == 0							;if bit = 0, place 30h into lpDestination
+ 000005E0  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000005E3  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000005E6  C6 04 06 30				mov byte ptr [eax + esi], 30h		;store '0' into lpDestination
+ 000005EA  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000005ED  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000005F0  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 1								;if bit = 1, place 31h into lpDestination
+ 000005F8  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000005FB  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000005FE  C6 04 06 31				mov byte ptr [eax + esi], 31h		;store '1' into lpDestination
+ 00000602  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000605  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000608  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 2								;if bit = 2, place 32h into lpDestination
+ 00000610  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000613  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000616  C6 04 06 32				mov byte ptr [eax + esi], 32h		;store '2' into lpDestination
+ 0000061A  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000061D  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000620  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 3								;if bit = 3, place 33h into lpDestination
+ 00000628  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 0000062B  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000062E  C6 04 06 33				mov byte ptr [eax + esi], 33h		;store '3' into lpDestination
+ 00000632  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000635  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000638  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 4								;if bit = 4, place 34h into lpDestination
+ 00000640  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000643  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000646  C6 04 06 34				mov byte ptr [eax + esi], 34h		;store '4' into lpDestination
+ 0000064A  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000064D  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000650  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 5								;if bit = 5, place 35h into lpDestination
+ 00000658  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 0000065B  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000065E  C6 04 06 35				mov byte ptr [eax + esi], 35h		;store '5' into lpDestination
+ 00000662  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000665  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000668  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 6								;if bit = 6, place 36h into lpDestination
+ 00000670  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000673  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000676  C6 04 06 36				mov byte ptr [eax + esi], 36h		;store '6' into lpDestination
+ 0000067A  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000067D  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000680  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 7								;if bit = 7, place 37h into lpDestination
+ 00000688  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 0000068B  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000068E  C6 04 06 37				mov byte ptr [eax + esi], 37h		;store '7' into lpDestination
+ 00000692  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000695  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000698  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 8								;if bit = 8, place 38h into lpDestination
+ 000006A0  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000006A3  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000006A6  C6 04 06 38				mov byte ptr [eax + esi], 38h		;store '8' into lpDestination
+ 000006AA  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000006AD  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000006B0  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 9								;if bit = 9, place 34h into lpDestination
+ 000006B8  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000006BB  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000006BE  C6 04 06 39				mov byte ptr [eax + esi], 39h		;store '9' into lpDestination
+ 000006C2  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000006C5  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000006C8  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 10							;if bit = 10(A), place 41h into lpDestination
+ 000006D0  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000006D3  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000006D6  C6 04 06 41				mov byte ptr [eax + esi], 41h		;store 'A' into lpDestination
+ 000006DA  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000006DD  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000006E0  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 11							;if bit = 11(B), place 42h into lpDestination
+ 000006E8  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 000006EB  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 000006EE  C6 04 06 42				mov byte ptr [eax + esi], 42h		;store 'B' into lpDestination
+ 000006F2  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 000006F5  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 000006F8  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 12							;if bit = 12(C), place 43h into lpDestination
+ 00000700  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000703  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000706  C6 04 06 43				mov byte ptr [eax + esi], 43h		;store 'C' into lpDestination
+ 0000070A  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000070D  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000710  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 13							;if bit = 13(D), place 44h into lpDestination
+ 00000718  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 0000071B  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000071E  C6 04 06 44				mov byte ptr [eax + esi], 44h		;store 'D' into lpDestination
+ 00000722  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000725  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000728  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 14							;if bit = 14(E), place 45h into lpDestination
+ 00000730  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 00000733  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 00000736  C6 04 06 45				mov byte ptr [eax + esi], 45h		;store 'E' into lpDestination
+ 0000073A  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 0000073D  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000740  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+					.if dl == 15							;if bit = 15(B), place 46h into lpDestination
+ 00000748  89 75 F8				mov lpSc, esi						;store lpSourceStrings increment to re use esi
+ 0000074B  8B 75 FC				mov esi, lpDest						;esi use to indiciate which byte in lpDestination
+ 0000074E  C6 04 06 46				mov byte ptr [eax + esi], 46h		;store 'F' into lpDestination
+ 00000752  83 C6 01				add esi, 1							;add 1 to lpDest to point to next byte in lpDestination
+ 00000755  89 75 FC				mov lpDest, esi						;free up esi by storing lpDestination increment into lpDest
+ 00000758  8B 75 F8				mov esi, lpSc						;restore esi to point to byte in lpSourceString
+					.endif 									;check dl for next bit
+ 0000075B  49				dec ecx									;decrement ecx to track numBytes
+ 0000075C  83 F9 00			cmp ecx, 0								;if ecx = 0, gone through each byte
+ 0000075F  0F 8F FFFFFCD7		jg	nextBytes							;if not 0 check next byte of lpSource
+ 00000765			finish:										;store 2x 30h to signify null value
+ 00000765  8B 75 FC			mov esi, lpDest							;esi points to next byte in lpDestination
+ 00000768  C6 04 06 30			mov byte ptr [eax + esi], 30h			;store '0' into lpDestination
+ 0000076C  46				inc esi									;increment esi to point to next byte in lpDestination
+ 0000076D  C6 04 06 30			mov byte ptr [eax + esi], 30h			;store '0' into lpDestination
+ 00000771  46				inc esi									;increment esi to point to next byte in lpDestination
+ 00000772  C6 04 06 00			mov byte ptr [eax + esi], 0				;store null value into lpDestination
+ 00000776			returnDword:
+					RET										;return to driver
+ 0000077E			hexToCharacter endp 
+					END
+Microsoft (R) Macro Assembler Version 6.11		    12/07/19 00:50:58
+convertmethods.asm					     Symbols 2 - 1
+
+
+
+
+Segments and Groups:
+
+                N a m e                 Size     Length   Align   Combine Class
+
+FLAT . . . . . . . . . . . . . .	GROUP
+STACK  . . . . . . . . . . . . .	32 Bit	 00000100 DWord	  Stack	  'STACK'	 
+_DATA  . . . . . . . . . . . . .	32 Bit	 00000000 DWord	  Public  'DATA'	
+_TEXT  . . . . . . . . . . . . .	32 Bit	 0000077E DWord	  Public  'CODE'	
+
+
+Procedures,  parameters and locals:
+
+                N a m e                 Type     Value    Attr
+
+ExitProcess  . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+String_Length  . . . . . . . . .	P Near	 000002D0 _TEXT	Length= 0000001E Public STDCALL
+  lpString . . . . . . . . . . .	DWord	 bp + 00000008
+  stLoop . . . . . . . . . . . .	L Near	 000002DD _TEXT	
+  finish . . . . . . . . . . . .	L Near	 000002E6 _TEXT	
+ascint32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+charTo4HexDigits . . . . . . . .	P Near	 00000000 _TEXT	Length= 000001C0 Public STDCALL
+  lpSourceString . . . . . . . .	DWord	 bp + 00000008
+  firstByte  . . . . . . . . . .	DWord	 bp - 00000004
+  secondByte . . . . . . . . . .	DWord	 bp - 00000008
+encrypt32Bit . . . . . . . . . .	P Near	 000001C0 _TEXT	Length= 00000110 Public STDCALL
+  lpSourceString . . . . . . . .	DWord	 bp + 00000008
+  dMask  . . . . . . . . . . . .	DWord	 bp + 0000000C
+  numBytes . . . . . . . . . . .	DWord	 bp + 00000010
+  rmdr . . . . . . . . . . . . .	DWord	 bp - 00000004
+  subNumBytes  . . . . . . . . .	L Near	 000001E6 _TEXT	
+  setRemainder . . . . . . . . .	L Near	 000001F1 _TEXT	
+  loopSource . . . . . . . . . .	L Near	 000001F9 _TEXT	
+getstring  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+heapAllocHarrison  . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+hexToCharacter . . . . . . . . .	P Near	 000002EE _TEXT	Length= 00000490 Public STDCALL
+  lpDestination  . . . . . . . .	DWord	 bp + 00000008
+  lpSource . . . . . . . . . . .	DWord	 bp + 0000000C
+  numBytes . . . . . . . . . . .	DWord	 bp + 00000010
+  lpDest . . . . . . . . . . . .	DWord	 bp - 00000004
+  lpSc . . . . . . . . . . . . .	DWord	 bp - 00000008
+  nextBytes  . . . . . . . . . .	L Near	 0000043C _TEXT	
+  finish . . . . . . . . . . . .	L Near	 00000765 _TEXT	
+  returnDword  . . . . . . . . .	L Near	 00000776 _TEXT	
+intasc32 . . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+putstring  . . . . . . . . . . .	P Near	 00000000 FLAT	Length= 00000000 External STDCALL
+
+
+Symbols:
+
+                N a m e                 Type     Value    Attr
+
+@CodeSize  . . . . . . . . . . .	Number	 00000000h   
+@DataSize  . . . . . . . . . . .	Number	 00000000h   
+@Interface . . . . . . . . . . .	Number	 00000000h   
+@Model . . . . . . . . . . . . .	Number	 00000007h   
+@code  . . . . . . . . . . . . .	Text   	 _TEXT
+@data  . . . . . . . . . . . . .	Text   	 FLAT
+@fardata?  . . . . . . . . . . .	Text   	 FLAT
+@fardata . . . . . . . . . . . .	Text   	 FLAT
+@stack . . . . . . . . . . . . .	Text   	 FLAT
+
+	   0 Warnings
+	   0 Errors
